@@ -80,24 +80,17 @@ router.post('/add', (req, res) => {
     date
   }
   // Add log into logs
-  User.findByIdAndUpdate
-  (
-    userId,
-    {
-      // Changes (here push log to logs)
-      $push: { logs : log }
-    },
-    {
-      // Options
-      new: true, // Return modified user...
-      lean: true, // ...as plain javascript
+  User.findByIdAndUpdate(userId, {
+      $push: { logs : log } // Push new log into logs array (see : https://docs.mongodb.com/manual/reference/operator/update/push/)
+    })
+    .setOptions({
+      new: true,           // Return modified user...
+      lean: true,          // ...as plain javascript
       omitUndefined: true, // Don't add undefined value
-    },
-    (error, userUpdated) => {
+    })
+    .exec((error, userUpdated) => {
       if (error) console.error(error.message)
-      
-      // Return new user
-      res.json(userUpdated)
+      res.json(userUpdated) // Return new user
     }
   )
 })
@@ -106,14 +99,11 @@ router.post('/add', (req, res) => {
 router.get('/log', (req, res) => {
   // Get params
   let {userId, from , to , limit } = req.query
-  console.log(`limit : ${limit}\nfrom : ${from}\nto : ${to}\nuserId : ${userId}`)
 
   // Change variable on undefined
   limit = (limit && !isNaN(parseInt(limit))) ? limit : Infinity
   from = (new Date(from) != "Invalid Date") ? new Date(from) : new Date("1900")
   to =  (new Date(to) != "Invalid Date") ? new Date(to) : new Date(Date.now())
-  console.log('----------------------------------------------------------------')
-  console.log(`limit : ${limit}\nfrom : ${from}\nto : ${to}\nuserId : ${userId}`)
 
   // The user
   User.findById(userId)
@@ -123,15 +113,17 @@ router.get('/log', (req, res) => {
       if(error) console.error(error.message)
       let logs = [...data.logs]
 
-      // Filter unsolicited dates
-      logs = logs.filter((log) => log.date.getTime() >= from.getTime() && log.date.getTime() <= to.getTime())
+      logs = logs.filter((log) => {
+        return log.date.getTime() >= from.getTime() && 
+               log.date.getTime() <= to.getTime()
+      }) // Filter unsolicited dates
 
       // Sort logs
       logs = logs.sort((a,b) => {
         return b.date.getTime() - a.date.getTime()
       })
 
-      logs = logs.slice(0,limit)
+      logs = logs.slice(0,limit) // Limit logs
       // Return logs
       res.json({
         count: logs.length,
